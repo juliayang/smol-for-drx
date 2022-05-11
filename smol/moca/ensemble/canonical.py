@@ -5,7 +5,7 @@ These are used when running Monte Carlo simulations for systems
 with a fixed number of sites and fixed concentration of species.
 """
 
-__author__ = "Luis Barroso-Luque"
+__author__ = "Luis Barroso-Luque, Julia Yang (table swap), Tina Chen (table swap)"
 
 
 from monty.json import MSONable
@@ -18,7 +18,7 @@ from smol.moca.sublattice import Sublattice
 class CanonicalEnsemble(Ensemble, MSONable):
     """Canonical Ensemble class to run Monte Carlo Simulations."""
 
-    valid_mcmc_steps = ("swap",)
+    valid_mcmc_steps = ("swap", "tableswapper")
 
     @property
     def natural_parameters(self):

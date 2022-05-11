@@ -358,6 +358,7 @@ class Metropolis(ThermalKernel):
         """
         rng = np.random.default_rng()
         step = self._usher.propose_step(occupancy)
+        self.trace.step = step  # we keep this to check if there is an empty flip suggested
         self.trace.delta_trace.features = self._feature_change(occupancy, step)
         self.trace.delta_trace.enthalpy = np.array(
             np.dot(self.natural_params, self.trace.delta_trace.features)

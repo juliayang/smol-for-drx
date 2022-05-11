@@ -153,7 +153,8 @@ class Sampler:
         """Clear samples from sampler container."""
         self.samples.clear()
 
-    def sample(self, nsteps, initial_occupancies, thin_by=1, progress=False):
+    def sample(self, nsteps, initial_occupancies, thin_by=1, progress=False,
+               ignore_empty_proposals=False):
         """Generate MCMC samples.
 
         Yield a sampler state every `thin_by` iterations. A state is give by
@@ -168,6 +169,12 @@ class Sampler:
                 number to thin iterations by and provide samples.
             progress (bool):
                 If true will show a progress bar.
+            ignore_empty_proposals (bool): optional
+                If True, nsteps will be incremented to account for empty step
+                proposals, which can happen if an insignificant step is proposed
+                (e.g. two Vacancies to be swapped in semi-grand-canonical.)
+                These proposals are essential to include to satisfy detailed balance.
+                Results in more efficient MC proposals.
 
         Yields:
             tuple: accepted, occupancies, features change, enthalpies change
@@ -203,6 +210,11 @@ class Sampler:
                     for i, strace in enumerate(
                         map(self._kernel.single_step, occupancies)
                     ):
+                        if ignore_empty_proposals:  # For table_swap
+                            while strace.step == tuple():
+                                # keep proposing until we have a valid MC step
+                                strace = self._kernel.single_step(occupancies[i])
+
                         for name, value in strace.items():
                             setattr(trace, name, value)
                         if strace.accepted:
@@ -222,6 +234,7 @@ class Sampler:
         stream_chunk=0,
         stream_file=None,
         swmr_mode=False,
+        ignore_empty_proposals=False
     ):
         """Run an MCMC sampling simulation.
 
@@ -249,6 +262,12 @@ class Sampler:
             swmr_mode (bool): optional
                 if true allows to read file from other processes. Single Writer
                 Multiple Readers.
+            ignore_empty_proposals (bool): optional
+                If True, nsteps will be incremented to account for empty step
+                proposals, which can happen if an insignificant step is proposed
+                (e.g. two Vacancies to be swapped in semi-grand-canonical.)
+                These proposals are essential to include to satisfy detailed balance.
+                Results in more efficient MC proposals.
         """
         if initial_occupancies is None:
             try:
@@ -284,7 +303,8 @@ class Sampler:
             self.samples.allocate(nsteps // thin_by)
 
         for i, trace in enumerate(
-            self.sample(nsteps, initial_occupancies, thin_by=thin_by, progress=progress)
+            self.sample(nsteps, initial_occupancies, thin_by=thin_by, progress=progress,
+                        ignore_empty_proposals=ignore_empty_proposals)
         ):
             self.samples.save_sampled_trace(trace, thinned_by=thin_by)
             if backend is not None and (i + 1) % stream_chunk == 0:
