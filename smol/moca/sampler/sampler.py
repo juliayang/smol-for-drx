@@ -211,7 +211,7 @@ class Sampler:
                         map(self._kernel.single_step, occupancies)
                     ):
                         if ignore_empty_proposals:  # For table_swap
-                            while strace.step == tuple():
+                            while strace.delta_trace.step == np.array([tuple()]):
                                 # keep proposing until we have a valid MC step
                                 strace = self._kernel.single_step(occupancies[i])
 
@@ -219,6 +219,9 @@ class Sampler:
                             setattr(trace, name, value)
                         if strace.accepted:
                             for name, delta_val in strace.delta_trace.items():
+                                if name == 'step':
+                                    # we don't actually need to keep the step information
+                                    continue
                                 val = getattr(trace, name)
                                 val[i] += delta_val
                     p_bar.update()
@@ -314,7 +317,7 @@ class Sampler:
             self.clear_samples()
             backend.close()
 
-        # A checkpoing of aux states should be saved to container here.
+        # A checkpoint of aux states should be saved to container here.
         # Note that to save any general "state" we will need to make sure it is
         # properly serializable to save as json and also to save in h5py
 

@@ -111,7 +111,8 @@ class MCKernel(ABC):
     valid_bias = None
 
     def __init__(
-        self, ensemble, step_type, *args, bias_type=None, bias_kwargs=None, **kwargs
+        self, ensemble, step_type, *args, run_initial_step=True,
+            bias_type=None, bias_kwargs=None, **kwargs
     ):
         """Initialize MCKernel.
 
@@ -157,7 +158,8 @@ class MCKernel(ABC):
             )
 
         # run a initial step to populate trace values
-        _ = self.single_step(np.zeros(ensemble.num_sites, dtype=int))
+        if run_initial_step:
+            _ = self.single_step(np.zeros(ensemble.num_sites, dtype=int))
 
     @property
     def mcusher(self):
@@ -358,7 +360,7 @@ class Metropolis(ThermalKernel):
         """
         rng = np.random.default_rng()
         step = self._usher.propose_step(occupancy)
-        self.trace.step = step  # we keep this to check if there is an empty flip suggested
+        self.trace.delta_trace.step = np.array(step)  # we keep this to check if there is an empty flip suggested
         self.trace.delta_trace.features = self._feature_change(occupancy, step)
         self.trace.delta_trace.enthalpy = np.array(
             np.dot(self.natural_params, self.trace.delta_trace.features)

@@ -211,12 +211,18 @@ class Tableswapper(MCUsher):
                 self._sites_to_sublattice[site] = sublatt.site_space
         # now initialize sublattice specie probabilities
         self.sublattice_probabilities_per_specie = []
-        for i, sublatt in enumerate(self.sublattices):
+
+        for i, sublatt in enumerate(self.active_sublattices):
             for _ in list(sublatt.site_space):
                 self.sublattice_probabilities_per_specie\
                     .append(self._sublatt_probs[i])
 
     def set_aux_state(self, state, **kwargs):
+        if len(state) > 1:
+            raise NotImplementedError("Cross-over swaps have not been implemented "
+                                      "for multiple starting occupancies")
+        else:
+            state = state[0]
         self._initialize_occupancies(state)
 
     def _get_swaps_from_table(self, occupancy):
@@ -324,14 +330,14 @@ class Tableswapper(MCUsher):
         """Set site table based on current occupancy."""
         self._site_table = {}
         possible_sp = []
-        for sublattice in self.sublattices:
+        for sublattice in self.active_sublattices:
             site_space_list = list(sublattice.site_space)
             possible_sp += site_space_list
         possible_sp = [sp for sp in set(possible_sp)]
 
         for sp in possible_sp:
             self._site_table[sp] = {}
-            for sublattice in self.sublattices:
+            for sublattice in self.active_sublattices:
                 if sp in list(sublattice.site_space):  # noqa
                     self._site_table[sp][sublattice.site_space] = \
                         [i for i in sublattice.sites if
@@ -347,13 +353,13 @@ class Tableswapper(MCUsher):
         """
         self.swap_table = {}
         possible_sp = []
-        for sublattice in self.sublattices:
+        for sublattice in self.active_sublattices:
             possible_sp += sublattice.site_space
         possible_sp = [sp for sp in set(possible_sp)]
         sp_sublatt_pairs = []
         for sp in possible_sp:
             # within each sublattice, allow swaps between diff species
-            for sublatt in self.sublattices:
+            for sublatt in self.active_sublattices:
                 ss_sp = sublatt.site_space.keys()  # noqa
                 if sp in ss_sp and len(self._site_table[sp][sublatt.site_space]) > 0:  # noqa
                     sp_sublatt_pairs.append((sp, sublatt.site_space))
@@ -463,6 +469,7 @@ class Tableswapper(MCUsher):
         """
 
         site1_options = []
+
         for sp in self.Mn_species:
             for sublatt in self._site_table[sp]:
                 site1_options += self._site_table[sp][sublatt]
@@ -560,7 +567,7 @@ class Semigrandcanonicaltableswapper(MCUsher):
             Gives the probability that a proposed swap is a Mn swap
             or a Mn disproportionation reaction
                 """
-        super(Grandcanonicaltableswapper, self).__init__(sublattices)
+        super(Semigrandcanonicaltableswapper, self).__init__(sublattices)
         self.swap_table = swap_table
         self.allow_crossover = allow_crossover
         self.gc_probability = GC_step_probability  # rename default variables
@@ -598,12 +605,18 @@ class Semigrandcanonicaltableswapper(MCUsher):
                 self._sites_to_sublattice[site] = sublatt.site_space
         # now initialize sublattice specie probabilities
         self.sublattice_probabilities_per_specie = []
-        for i, sublatt in enumerate(self.sublattices):
+
+        for i, sublatt in enumerate(self.active_sublattices):
             for _ in list(sublatt.site_space):
                 self.sublattice_probabilities_per_specie\
                     .append(self._sublatt_probs[i])
 
     def set_aux_state(self, state, **kwargs):
+        if len(state) > 1:
+            raise NotImplementedError("Cross-over swaps have not been implemented "
+                                      "for multiple starting occupancies")
+        else:
+            state = state[0]
         self._initialize_occupancies(state)
 
     def _get_swaps_from_table(self, occupancy):
@@ -711,14 +724,14 @@ class Semigrandcanonicaltableswapper(MCUsher):
         """Set site table based on current occupancy."""
         self._site_table = {}
         possible_sp = []
-        for sublattice in self.sublattices:
+        for sublattice in self.active_sublattices:
             site_space_list = list(sublattice.site_space)
             possible_sp += site_space_list
         possible_sp = [sp for sp in set(possible_sp)]
 
         for sp in possible_sp:
             self._site_table[sp] = {}
-            for sublattice in self.sublattices:
+            for sublattice in self.active_sublattices:
                 if sp in list(sublattice.site_space):  # noqa
                     self._site_table[sp][sublattice.site_space] = \
                         [i for i in sublattice.sites if
@@ -734,13 +747,13 @@ class Semigrandcanonicaltableswapper(MCUsher):
         """
         self.swap_table = {}
         possible_sp = []
-        for sublattice in self.sublattices:
+        for sublattice in self.active_sublattices:
             possible_sp += sublattice.site_space
         possible_sp = [sp for sp in set(possible_sp)]
         sp_sublatt_pairs = []
         for sp in possible_sp:
             # within each sublattice, allow swaps between diff species
-            for sublatt in self.sublattices:
+            for sublatt in self.active_sublattices:
                 ss_sp = sublatt.site_space.keys()  # noqa
                 if sp in ss_sp and len(self._site_table[sp][sublatt.site_space]) > 0:  # noqa
                     sp_sublatt_pairs.append((sp, sublatt.site_space))
@@ -964,7 +977,7 @@ class Semigrandcanonicaltableswapper(MCUsher):
                 flattened = [self.Mn2_specie, self.Mn3_specie, self.Mn4_specie]
             else:
                 flattened = [item for sublist in flip for item in sublist]
-            for sublatt in self.sublattices:
+            for sublatt in self.active_sublattices:
                 if self.domains_intersect or flip == 'Mn_disproportionation':
                     if np.alltrue([i in sublatt.site_space for i in flattened]):
                         self.flip_to_sublattice[flip] = [sublatt.site_space]
@@ -1053,7 +1066,6 @@ class Semigrandcanonicaltableswapper(MCUsher):
 
         newsp1 = chosen_gc_flip[chosen[0]][sp1index]
         newsp2 = chosen_gc_flip[chosen[0]][sp2index]
-        #print('new', newsp1, newsp2)
 
         # need to catch out-of-domain errors, e.g. Mn3+ goes tetrahedral
         if newsp1 not in list(self._sites_to_sublattice[site1]) or \
