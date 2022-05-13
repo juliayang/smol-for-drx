@@ -548,31 +548,34 @@ class Semigrandcanonicaltableswapper(MCUsher):
     """
 
     def __init__(self, sublattices, allow_crossover=True,
-                 GC_step_probability=0.0, swap_table = None,
-                 gc_step_table = None, domains_intersect = True):
+                 GC_step_probability=0.0, swap_table=None,
+                 gc_step_table=None, combine_domains=False):
         """
         Implementation of a swap step for two random sites within
         the same randomly chosen (shared or unshared) sublattice.
            Args:
-            sublattices (list of Sublattice objects):
+            sublattices (list):
                 list of Sublattices to propose steps for.
-            allow_crossover: (bool, default = True). Allows swapping
-            between sublattices which contain the same subset of species.
-            For example, Li/Vac existing on tetrahedral and octahedral sites
-            are allowed to swap between tetrahedral and octahedral sites.
-            swap_table: (dict, default = None). Dictionary with keys being
-            { ((Specie1, Sublattice1 SiteSpace),
+            allow_crossover: (bool, default = True).
+                Allows swapping between sublattices which contain the same subset of species.
+                For example, Li/Vac existing on tetrahedral and octahedral sites
+                are allowed to swap between tetrahedral and octahedral sites.
+            GC_step_probability (float, default = 0.0):
+                probability of a semi-grand canonical step being proposed
+            swap_table: (dict, default = None).
+                Dictionary with keys being { ((Specie1, Sublattice1 SiteSpace),
                (Specie2, Sublattice2 SiteSpace)): probability (float),....}
-            Mn_swap_probability: (float, default = 0.0).
-            Gives the probability that a proposed swap is a Mn swap
-            or a Mn disproportionation reaction
+            gc_step_table: (dict)
+                Necessary if GC_step_probability != 0
+            combine_domains: (bool)
+
                 """
         super(Semigrandcanonicaltableswapper, self).__init__(sublattices)
         self.swap_table = swap_table
         self.allow_crossover = allow_crossover
         self.gc_probability = GC_step_probability  # rename default variables
         self.gc_step_table = gc_step_table
-        self.domains_intersect = domains_intersect
+        self.combine_domains = combine_domains
         self.Mn_flip_table = {('Mn2+', 'Mn2+'): ['None'],
                               ('Mn2+', 'Mn3+'): ['swap'],
                               ('Mn3+', 'Mn2+'): ['swap'],
@@ -689,7 +692,7 @@ class Semigrandcanonicaltableswapper(MCUsher):
                         (site2, site2newIndex)), flip_type
 
             except IndexError:
-                warnings.warn("At least one species does not exist given "
+                warnings.warn("At least one species does not exist in given "
                               "sublattice in list of possible flip types "
                               "(list of species on sublattice is empty). "
                               "Continuing, returning an empty flip")
@@ -978,11 +981,11 @@ class Semigrandcanonicaltableswapper(MCUsher):
             else:
                 flattened = [item for sublist in flip for item in sublist]
             for sublatt in self.active_sublattices:
-                if self.domains_intersect or flip == 'Mn_disproportionation':
+                if self.combine_domains or flip == 'Mn_disproportionation':
                     if np.alltrue([i in sublatt.site_space for i in flattened]):
                         self.flip_to_sublattice[flip] = [sublatt.site_space]
                         break
-                elif not self.domains_intersect:
+                elif not self.combine_domains:
                     if sum([i in sublatt.site_space for i in flattened]) > 0:
                         # pure cation flips don't ever flip onto pure anion sites
                         if flip not in self.flip_to_sublattice:

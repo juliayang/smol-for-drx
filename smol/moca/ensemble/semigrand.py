@@ -4,7 +4,8 @@ These are used to run Monte Carlo sampling for systems with
 a fixed number of sites but variable concentration of species.
 """
 
-__author__ = "Luis Barroso-Luque, Julia Yang (make_sgc_step_table)"
+__author__ = "Luis Barroso-Luque, " \
+             "Julia Yang (make_sgc_step_table, make_shared_swap_table)"
 
 
 from collections import Counter
@@ -289,4 +290,4 @@ def make_shared_swap_table(shared_table):
     for i, key in enumerate(shared_table):
         if 'shared' in key[0] and 'shared' in key[1]:
             return {((Species(key[0][0][0], key[0][0][1]), 'shared'),
-                     Vacancy, 'shared'): 1.0}
+                     (Vacancy(), 'shared')): 1.0}
