@@ -4,7 +4,7 @@ These are used to run Monte Carlo sampling for systems with
 a fixed number of sites but variable concentration of species.
 """
 
-__author__ = "Luis Barroso-Luque"
+__author__ = "Luis Barroso-Luque, Julia Yang (make_sgc_step_table)"
 
 
 from collections import Counter
@@ -35,7 +35,7 @@ class SemiGrandEnsemble(Ensemble, MSONable):
             dict of chemical potentials.
     """
 
-    valid_mcmc_steps = ("flip",)
+    valid_mcmc_steps = ("flip",'Semigrandcanonicaltableswapper')
 
     def __init__(self, processor, chemical_potentials, sublattices=None):
         """Initialize MuSemiGrandEnsemble.
@@ -247,3 +247,46 @@ class SemiGrandEnsemble(Ensemble, MSONable):
             chemical_potentials=chemical_potentials,
             sublattices=sublatts,
         )
+
+def make_sgc_step_table(sgc_step_table):
+    """Utility function to convert user-specified flip table into smol-friendly classes.
+
+    Args:
+         sgc_step_table (dict):
+            Dictionary containing the forward and reverse reactions, and the
+            probability of picking either reaction, e.g.
+             {(('Li', 1), ('Mn', 2)), (('Vac', 0), ('Mn', 3))): 0.5}
+    Returns:
+        sgc_step_table with all species converted into the proper classes, e.g.
+        {((Species Li+, Species Mn2+), (Vacancy, Species Mn3+)): 0.5}
+        """
+    return_table = dict()
+    for flip_choice in sgc_step_table:
+        if type(flip_choice) == tuple:
+            flipOuter = []
+            for flip in flip_choice:
+                flipInner = []
+                for siteInfo in flip:
+                    if 'Vac' in siteInfo:
+                        flipInner.append(Vacancy())
+                    else:
+                        flipInner.append(Species(siteInfo[0], siteInfo[1]))
+                flipOuter.append(tuple(flipInner))
+            return_table[tuple(flipOuter)] = sgc_step_table[flip_choice]
+        elif type(flip_choice) == str:
+            return_table[flip_choice] = sgc_step_table[flip_choice]
+    return return_table
+
+
+def make_shared_swap_table(shared_table):
+    """Utility function to convert a shared swap table into Species and Vacancy objects.
+    Args:
+        shared_table (dict):
+        Example: {((('Li', 1), 'shared'), (('Vac', 0), 'shared')):1.0}
+    Returns:
+        {((Species Li+, 'shared'), (Vacancy, 'shared')):1.0}
+    """
+    for i, key in enumerate(shared_table):
+        if 'shared' in key[0] and 'shared' in key[1]:
+            return {((Species(key[0][0][0], key[0][0][1]), 'shared'),
+                     Vacancy, 'shared'): 1.0}
